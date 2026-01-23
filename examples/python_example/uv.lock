@@ -1,0 +1,19 @@
+version = 1
+revision = 2
+requires-python = ">=3.12"
+
+[[package]]
+name = "dm2xcod"
+version = "0.1.2"
+source = { directory = "../../" }
+
+[[package]]
+name = "python-example"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "dm2xcod" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "dm2xcod", directory = "../../" }]
