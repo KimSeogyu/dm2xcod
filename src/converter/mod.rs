@@ -86,6 +86,10 @@ impl DocxToMarkdown {
             options: &self.options,
             footnotes: Vec::new(),
             endnotes: Vec::new(),
+            comments: Vec::new(),
+            docx_comments: docx.comments.as_ref(),
+            docx_footnotes: docx.footnotes.as_ref(),
+            docx_endnotes: docx.endnotes.as_ref(),
             styles: &docx.styles,
             style_resolver: &style_resolver,
             localization: &localization_strategy,
@@ -95,14 +99,20 @@ impl DocxToMarkdown {
             output.push_str(&Self::convert_content(content, &mut context)?);
         }
 
-        // Add footnotes/endnotes if any
-        if !context.footnotes.is_empty() || !context.endnotes.is_empty() {
+        // Add footnotes/endnotes/comments if any
+        if !context.footnotes.is_empty()
+            || !context.endnotes.is_empty()
+            || !context.comments.is_empty()
+        {
             output.push_str("\n\n---\n\n");
             for (i, note) in context.footnotes.iter().enumerate() {
                 output.push_str(&format!("[^{}]: {}\n", i + 1, note));
             }
             for (i, note) in context.endnotes.iter().enumerate() {
                 output.push_str(&format!("[^en{}]: {}\n", i + 1, note));
+            }
+            for (id, text) in context.comments.iter() {
+                output.push_str(&format!("[^c{}]: {}\n", id, text));
             }
         }
 
@@ -163,6 +173,14 @@ pub struct ConversionContext<'a> {
     pub footnotes: Vec<String>,
     /// Collected endnotes
     pub endnotes: Vec<String>,
+    /// Collected comments (id, text)
+    pub comments: Vec<(String, String)>,
+    /// Document comments reference
+    pub docx_comments: Option<&'a rs_docx::document::Comments<'a>>,
+    /// Document footnotes reference
+    pub docx_footnotes: Option<&'a rs_docx::document::FootNotes<'a>>,
+    /// Document endnotes reference
+    pub docx_endnotes: Option<&'a rs_docx::document::EndNotes<'a>>,
     /// Document styles
     pub styles: &'a rs_docx::styles::Styles<'a>,
     /// Style resolver

@@ -8,13 +8,15 @@ use rs_docx::document::{Hyperlink, Paragraph, ParagraphContent};
 pub struct ParagraphConverter;
 
 /// Segment of formatted text with consistent styling.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 struct FormattedSegment {
     text: String,
     is_bold: bool,
     is_italic: bool,
     has_underline: bool,
     has_strike: bool,
+    is_insertion: bool,
+    is_deletion: bool,
 }
 
 impl ParagraphConverter {
@@ -88,10 +90,7 @@ impl ParagraphConverter {
                         // Hyperlinks are treated as plain text segments
                         segments.push(FormattedSegment {
                             text: link_md,
-                            is_bold: false,
-                            is_italic: false,
-                            has_underline: false,
-                            has_strike: false,
+                            ..Default::default()
                         });
                     }
                 }
@@ -106,11 +105,46 @@ impl ParagraphConverter {
                         }
                     }
                 }
+                ParagraphContent::Insertion(ins) => {
+                    // Handle inserted content (track changes)
+                    for run in &ins.runs {
+                        let text = Self::extract_text(run, context);
+                        if !text.is_empty() {
+                            let mut seg = Self::run_to_segment(run, &text, context, para_style_id);
+                            seg.is_insertion = true;
+                            segments.push(seg);
+                        }
+                    }
+                }
+                ParagraphContent::Deletion(del) => {
+                    // Handle deleted content (track changes)
+                    let text = Self::extract_deleted_text(del);
+                    if !text.is_empty() {
+                        segments.push(FormattedSegment {
+                            text,
+                            is_deletion: true,
+                            ..Default::default()
+                        });
+                    }
+                }
                 _ => {}
             }
         }
 
         Ok(segments)
+    }
+
+    /// Extracts deleted text from a Deletion element.
+    fn extract_deleted_text(del: &rs_docx::document::Deletion) -> String {
+        let mut text = String::new();
+        for run in &del.runs {
+            for content in &run.content {
+                if let rs_docx::document::RunContent::DelText(del_text) = content {
+                    text.push_str(&del_text.text);
+                }
+            }
+        }
+        text
     }
 
     /// Extracts text from a run, excluding field codes.
@@ -150,6 +184,85 @@ impl ParagraphConverter {
                 // Skip InstrText (field codes like TOC, PAGEREF)
                 rs_docx::document::RunContent::InstrText(_) => {}
                 rs_docx::document::RunContent::DelInstrText(_) => {}
+                rs_docx::document::RunContent::CommentReference(cref) => {
+                    // Extract comment ID and look up comment text
+                    if let Some(id) = &cref.id {
+                        let id_str = id.to_string();
+                        // Look up comment content
+                        if let Some(comments) = context.docx_comments {
+                            if let Some(comment) = comments
+                                .comments
+                                .iter()
+                                .find(|c| c.id.map(|i| i.to_string()) == Some(id_str.clone()))
+                            {
+                                // Extract text from comment paragraph
+                                let comment_text = comment.content.text();
+                                context.comments.push((id_str.clone(), comment_text));
+                            }
+                        }
+                        text.push_str(&format!("[^c{}]", id_str));
+                    }
+                }
+                rs_docx::document::RunContent::FootnoteReference(fnref) => {
+                    // Extract footnote ID and look up footnote text
+                    if let Some(ref id_str) = fnref.id {
+                        // Parse id string to isize for comparison
+                        if let Ok(id_num) = id_str.parse::<isize>() {
+                            // Look up footnote content
+                            if let Some(footnotes) = context.docx_footnotes {
+                                if let Some(footnote) =
+                                    footnotes.content.iter().find(|f| f.id == Some(id_num))
+                                {
+                                    // Extract text from footnote body content
+                                    let footnote_text: String = footnote
+                                        .content
+                                        .iter()
+                                        .filter_map(|bc| match bc {
+                                            rs_docx::document::BodyContent::Paragraph(p) => {
+                                                Some(p.text())
+                                            }
+                                            _ => None,
+                                        })
+                                        .collect::<Vec<_>>()
+                                        .join(" ");
+                                    context.footnotes.push(footnote_text);
+                                }
+                            }
+                            let idx = context.footnotes.len();
+                            text.push_str(&format!("[^{}]", idx));
+                        }
+                    }
+                }
+                rs_docx::document::RunContent::EndnoteReference(enref) => {
+                    // Extract endnote ID and look up endnote text
+                    if let Some(ref id_str) = enref.id {
+                        // Parse id string to isize for comparison
+                        if let Ok(id_num) = id_str.parse::<isize>() {
+                            // Look up endnote content
+                            if let Some(endnotes) = context.docx_endnotes {
+                                if let Some(endnote) =
+                                    endnotes.content.iter().find(|e| e.id == Some(id_num))
+                                {
+                                    // Extract text from endnote body content
+                                    let endnote_text: String = endnote
+                                        .content
+                                        .iter()
+                                        .filter_map(|bc| match bc {
+                                            rs_docx::document::BodyContent::Paragraph(p) => {
+                                                Some(p.text())
+                                            }
+                                            _ => None,
+                                        })
+                                        .collect::<Vec<_>>()
+                                        .join(" ");
+                                    context.endnotes.push(endnote_text);
+                                }
+                            }
+                            let idx = context.endnotes.len();
+                            text.push_str(&format!("[^en{}]", idx));
+                        }
+                    }
+                }
                 _ => {}
             }
         }
@@ -201,6 +314,8 @@ impl ParagraphConverter {
             is_italic,
             has_underline,
             has_strike,
+            is_insertion: false,
+            is_deletion: false,
         }
     }
 
@@ -210,11 +325,13 @@ impl ParagraphConverter {
 
         for seg in segments {
             if let Some(last) = merged.last_mut() {
-                // Check if formatting matches
+                // Check if formatting matches (including track changes flags)
                 if last.is_bold == seg.is_bold
                     && last.is_italic == seg.is_italic
                     && last.has_underline == seg.has_underline
                     && last.has_strike == seg.has_strike
+                    && last.is_insertion == seg.is_insertion
+                    && last.is_deletion == seg.is_deletion
                 {
                     // Merge text
                     last.text.push_str(&seg.text);
@@ -234,12 +351,22 @@ impl ParagraphConverter {
         for seg in segments {
             let mut text = seg.text.clone();
 
-            // Apply formatting in order
-            if seg.has_underline && context.options.html_underline {
+            // Apply track changes formatting first
+            if seg.is_deletion {
+                // Deleted text: strikethrough
+                text = format!("~~{}~~", text);
+            }
+            if seg.is_insertion {
+                // Inserted text: HTML ins tag or underline
+                text = format!("<ins>{}</ins>", text);
+            }
+
+            // Apply regular formatting
+            if seg.has_underline && context.options.html_underline && !seg.is_insertion {
                 text = format!("<u>{}</u>", text);
             }
 
-            if seg.has_strike {
+            if seg.has_strike && !seg.is_deletion {
                 if context.options.html_strikethrough {
                     text = format!("<s>{}</s>", text);
                 } else {

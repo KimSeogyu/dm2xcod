@@ -30,3 +30,8 @@ dist/
 *.so
 *.dylib
 *.pyd
+
+/tests/output/
+deps/
+tests/aaa/
+tests/pandoc/

@@ -70,6 +70,25 @@ impl RunConverter {
                     let idx = context.endnotes.len() + 1;
                     text.push_str(&format!("[^en{}]", idx));
                 }
+                RunContent::CommentReference(cref) => {
+                    // Extract comment ID and look up comment text
+                    if let Some(id) = &cref.id {
+                        let id_str = id.to_string();
+                        // Look up comment content
+                        if let Some(comments) = context.docx_comments {
+                            if let Some(comment) = comments
+                                .comments
+                                .iter()
+                                .find(|c| c.id.map(|i| i.to_string()) == Some(id_str.clone()))
+                            {
+                                // Extract text from comment paragraph
+                                let comment_text = comment.content.text();
+                                context.comments.push((id_str.clone(), comment_text));
+                            }
+                        }
+                        text.push_str(&format!("[^c{}]", id_str));
+                    }
+                }
                 _ => {}
             }
         }
