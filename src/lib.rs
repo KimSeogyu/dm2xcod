@@ -1,6 +1,6 @@
 //! # dm2xcod
 //!
-//! DOCX to Markdown converter using `docx_rust`.
+//! DOCX to Markdown converter using `rs_docx`.
 //!
 //! ## Example
 //!

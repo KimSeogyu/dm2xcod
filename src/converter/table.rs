@@ -2,7 +2,7 @@
 
 use super::{ConversionContext, ParagraphConverter};
 use crate::Result;
-use docx_rust::document::{Table, TableCell, TableCellContent};
+use rs_docx::document::{Table, TableCell, TableCellContent};
 
 /// Converter for Table elements.
 pub struct TableConverter;
@@ -50,7 +50,7 @@ impl TableConverter {
                 }
 
                 match cell_content {
-                    docx_rust::document::TableRowContent::TableCell(cell) => {
+                    rs_docx::document::TableRowContent::TableCell(cell) => {
                         // Extract properties
                         let grid_span = cell
                             .property
@@ -62,10 +62,8 @@ impl TableConverter {
                             cell.property.v_merge.as_ref().and_then(|v| v.val.as_ref());
 
                         // Parse vMerge: "restart" or "continue".
-                        let is_v_merge_restart = matches!(
-                            v_merge_val,
-                            Some(docx_rust::formatting::VMergeType::Restart)
-                        );
+                        let is_v_merge_restart =
+                            matches!(v_merge_val, Some(rs_docx::formatting::VMergeType::Restart));
 
                         let is_v_merge_continue =
                             cell.property.v_merge.is_some() && !is_v_merge_restart;
@@ -121,7 +119,7 @@ impl TableConverter {
 
                         col_idx += grid_span;
                     }
-                    docx_rust::document::TableRowContent::SDT(_) => {
+                    rs_docx::document::TableRowContent::SDT(_) => {
                         // Ignore SDT for now, effectively skipping column?
                         // Or treat as empty cell? simpler to ignore.
                     }

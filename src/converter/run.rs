@@ -2,7 +2,7 @@
 
 use super::ConversionContext;
 use crate::Result;
-use docx_rust::document::{BreakType, Run, RunContent};
+use rs_docx::document::{BreakType, Run, RunContent};
 
 /// Converter for Run elements.
 pub struct RunConverter;
@@ -102,7 +102,7 @@ impl RunConverter {
     /// Applies text formatting based on run properties.
     fn apply_formatting(
         text: &str,
-        props: &docx_rust::formatting::CharacterProperty,
+        props: &rs_docx::formatting::CharacterProperty,
         context: &ConversionContext,
     ) -> String {
         let mut result = text.to_string();

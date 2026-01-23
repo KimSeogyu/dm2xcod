@@ -1,6 +1,6 @@
 //! Numbering resolver - handles list numbering and indentation.
 
-use docx_rust::Docx;
+use rs_docx::Docx;
 use std::collections::HashMap;
 
 /// Resolver for DOCX numbering definitions.

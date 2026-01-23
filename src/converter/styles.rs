@@ -1,17 +1,17 @@
 //! Style resolver - handles style inheritance and property merging.
 
-use docx_rust::formatting::{CharacterProperty, ParagraphProperty};
-use docx_rust::styles::Style;
+use rs_docx::formatting::{CharacterProperty, ParagraphProperty};
+use rs_docx::styles::Style;
 use std::collections::HashMap;
 
 /// Resolver for DOCX styles and inheritance.
 pub struct StyleResolver<'a> {
-    styles: &'a docx_rust::styles::Styles<'a>,
+    styles: &'a rs_docx::styles::Styles<'a>,
     style_map: HashMap<&'a str, &'a Style<'a>>,
 }
 
 impl<'a> StyleResolver<'a> {
-    pub fn new(styles: &'a docx_rust::styles::Styles<'a>) -> Self {
+    pub fn new(styles: &'a rs_docx::styles::Styles<'a>) -> Self {
         let mut style_map = HashMap::new();
         for style in &styles.styles {
             style_map.insert(style.style_id.as_ref(), style);

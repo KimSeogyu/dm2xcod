@@ -11,8 +11,8 @@ mod table;
 
 use crate::localization::{KoreanLocalization, LocalizationStrategy};
 use crate::{error::Error, ConvertOptions, ImageHandling, Result};
-use docx_rust::document::BodyContent;
-use docx_rust::DocxFile;
+use rs_docx::document::BodyContent;
+use rs_docx::DocxFile;
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -136,7 +136,7 @@ impl DocxToMarkdown {
         Ok(output)
     }
 
-    fn build_relationship_map<'a>(&self, docx: &'a docx_rust::Docx) -> HashMap<String, String> {
+    fn build_relationship_map<'a>(&self, docx: &'a rs_docx::Docx) -> HashMap<String, String> {
         let mut rels = HashMap::new();
 
         if let Some(doc_rels) = &docx.document_rels {
@@ -164,7 +164,7 @@ pub struct ConversionContext<'a> {
     /// Collected endnotes
     pub endnotes: Vec<String>,
     /// Document styles
-    pub styles: &'a docx_rust::styles::Styles<'a>,
+    pub styles: &'a rs_docx::styles::Styles<'a>,
     /// Style resolver
     pub style_resolver: &'a StyleResolver<'a>,
     /// Localization strategy

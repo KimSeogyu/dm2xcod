@@ -1,5 +1,5 @@
-use docx_rust::document::{Inline, Pict, Run, RunContent};
-use docx_rust::formatting::{GridSpan, VMerge, VMergeType};
+use rs_docx::document::{Inline, Pict, Run, RunContent};
+use rs_docx::formatting::{GridSpan, VMerge, VMergeType};
 use hard_xml::XmlRead;
 
 #[test]

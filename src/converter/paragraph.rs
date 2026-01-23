@@ -2,7 +2,7 @@
 
 use super::{ConversionContext, RunConverter};
 use crate::Result;
-use docx_rust::document::{Hyperlink, Paragraph, ParagraphContent};
+use rs_docx::document::{Hyperlink, Paragraph, ParagraphContent};
 
 /// Converter for Paragraph elements.
 pub struct ParagraphConverter;
@@ -58,12 +58,12 @@ impl ParagraphConverter {
                 ParagraphContent::Run(run) => {
                     // Check for field characters (TOC, page refs, etc.)
                     for rc in &run.content {
-                        if let docx_rust::document::RunContent::FieldChar(fc) = rc {
+                        if let rs_docx::document::RunContent::FieldChar(fc) = rc {
                             if let Some(char_type) = &fc.ty {
                                 match char_type {
-                                    docx_rust::document::CharType::Begin => field_state = 1,
-                                    docx_rust::document::CharType::Separate => field_state = 2,
-                                    docx_rust::document::CharType::End => field_state = 0,
+                                    rs_docx::document::CharType::Begin => field_state = 1,
+                                    rs_docx::document::CharType::Separate => field_state = 2,
+                                    rs_docx::document::CharType::End => field_state = 0,
                                 }
                             }
                         }
@@ -99,7 +99,7 @@ impl ParagraphConverter {
                     // Structured document tags (TOC, etc.) - extract inner content
                     if let Some(sdt_content) = &sdt.content {
                         for bc in &sdt_content.content {
-                            if let docx_rust::document::BodyContent::Paragraph(inner_para) = bc {
+                            if let rs_docx::document::BodyContent::Paragraph(inner_para) = bc {
                                 let inner_segs = Self::collect_segments(inner_para, context)?;
                                 segments.extend(inner_segs);
                             }
@@ -114,24 +114,24 @@ impl ParagraphConverter {
     }
 
     /// Extracts text from a run, excluding field codes.
-    fn extract_text(run: &docx_rust::document::Run, context: &mut ConversionContext) -> String {
+    fn extract_text(run: &rs_docx::document::Run, context: &mut ConversionContext) -> String {
         let mut text = String::new();
         for content in &run.content {
             match content {
-                docx_rust::document::RunContent::Text(t) => {
+                rs_docx::document::RunContent::Text(t) => {
                     text.push_str(&t.text);
                 }
-                docx_rust::document::RunContent::Tab(_) => {
+                rs_docx::document::RunContent::Tab(_) => {
                     text.push('\t');
                 }
-                docx_rust::document::RunContent::Break(br) => match br.ty {
-                    Some(docx_rust::document::BreakType::Page) => text.push_str("\n\n---\n\n"),
+                rs_docx::document::RunContent::Break(br) => match br.ty {
+                    Some(rs_docx::document::BreakType::Page) => text.push_str("\n\n---\n\n"),
                     _ => text.push('\n'),
                 },
-                docx_rust::document::RunContent::CarriageReturn(_) => {
+                rs_docx::document::RunContent::CarriageReturn(_) => {
                     text.push('\n');
                 }
-                docx_rust::document::RunContent::Drawing(drawing) => {
+                rs_docx::document::RunContent::Drawing(drawing) => {
                     if let Ok(Some(img_md)) = context
                         .image_extractor
                         .extract_from_drawing(drawing, context.rels)
@@ -139,7 +139,7 @@ impl ParagraphConverter {
                         text.push_str(&img_md);
                     }
                 }
-                docx_rust::document::RunContent::Pict(pict) => {
+                rs_docx::document::RunContent::Pict(pict) => {
                     if let Ok(Some(img_md)) = context
                         .image_extractor
                         .extract_from_pict(pict, context.rels)
@@ -148,8 +148,8 @@ impl ParagraphConverter {
                     }
                 }
                 // Skip InstrText (field codes like TOC, PAGEREF)
-                docx_rust::document::RunContent::InstrText(_) => {}
-                docx_rust::document::RunContent::DelInstrText(_) => {}
+                rs_docx::document::RunContent::InstrText(_) => {}
+                rs_docx::document::RunContent::DelInstrText(_) => {}
                 _ => {}
             }
         }
@@ -158,7 +158,7 @@ impl ParagraphConverter {
 
     /// Creates a formatted segment from a run.
     fn run_to_segment(
-        run: &docx_rust::document::Run,
+        run: &rs_docx::document::Run,
         text: &str,
         context: &mut ConversionContext,
         para_style_id: Option<&str>,
@@ -340,13 +340,13 @@ impl ParagraphConverter {
         if !is_heading {
             if let Some(jc) = &effective_props.justification {
                 match &jc.value {
-                    docx_rust::formatting::JustificationVal::Center => {
+                    rs_docx::formatting::JustificationVal::Center => {
                         return Ok(format!(
                             "<div style=\"text-align: center;\">{}</div>",
                             final_text
                         ));
                     }
-                    docx_rust::formatting::JustificationVal::Right => {
+                    rs_docx::formatting::JustificationVal::Right => {
                         return Ok(format!(
                             "<div style=\"text-align: right;\">{}</div>",
                             final_text
@@ -372,12 +372,12 @@ impl ParagraphConverter {
         for run in &hyperlink.content {
             // Check field char
             for rc in &run.content {
-                if let docx_rust::document::RunContent::FieldChar(fc) = rc {
+                if let rs_docx::document::RunContent::FieldChar(fc) = rc {
                     if let Some(char_type) = &fc.ty {
                         match char_type {
-                            docx_rust::document::CharType::Begin => field_state = 1,
-                            docx_rust::document::CharType::Separate => field_state = 2,
-                            docx_rust::document::CharType::End => field_state = 0,
+                            rs_docx::document::CharType::Begin => field_state = 1,
+                            rs_docx::document::CharType::Separate => field_state = 2,
+                            rs_docx::document::CharType::End => field_state = 0,
                         }
                     }
                 }

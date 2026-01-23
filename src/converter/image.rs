@@ -3,7 +3,7 @@
 use crate::{error::Error, Result};
 use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
-use docx_rust::document::Drawing;
+use rs_docx::document::Drawing;
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::Read;
@@ -110,7 +110,7 @@ impl ImageExtractor {
     /// Extracts image from a Pict element (VML).
     pub fn extract_from_pict(
         &mut self,
-        pict: &docx_rust::document::Pict,
+        pict: &rs_docx::document::Pict,
         rels: &HashMap<String, String>,
     ) -> Result<Option<String>> {
         if matches!(self.mode, ImageMode::Skip) {
@@ -133,7 +133,7 @@ impl ImageExtractor {
         self.process_image(image_path)
     }
 
-    fn find_pict_blip_id(&self, pict: &docx_rust::document::Pict) -> Option<String> {
+    fn find_pict_blip_id(&self, pict: &rs_docx::document::Pict) -> Option<String> {
         // Check shape -> imagedata
         if let Some(shape) = &pict.shape {
             if let Some(img_data) = &shape.image_data {
