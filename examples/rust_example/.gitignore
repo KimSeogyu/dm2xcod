@@ -1,0 +1,32 @@
+# Rust
+target/
+**/*.rs.bk
+
+# Operating System
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.iml
+
+# Project Specific
+output_tests/
+test_output/
+samples/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+*.whl
+
+# PyO3/Maturin
+*.so
+*.dylib
+*.pyd

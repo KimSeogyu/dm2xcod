@@ -4,8 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-# Use from crates.io (uncomment after package is published)
-# dm2xcod = "0.1"
-
-# Use from GitHub (since crates.io publish may take time)
-dm2xcod = { git = "https://github.com/KimSeogyu/dm2xcod.git", tag = "v0.1.0" }
+dm2xcod = { path = "../../" }

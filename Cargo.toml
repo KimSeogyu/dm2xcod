@@ -17,14 +17,13 @@ categories = [
 ]
 default-run = "dm2xcod"
 
-# Workspace removed - using external git dependency for docx-rust
 
 [features]
 default = []
 python = ["pyo3"]
 
 [dependencies]
-docx-rust = { git = "https://github.com/KimSeogyu/docx-rs.git", branch = "master" }
+rs-docx = "0.1.0"
 base64 = "0.22"
 thiserror = "2.0"
 zip = "2.2"

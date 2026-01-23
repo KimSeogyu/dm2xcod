@@ -13,7 +13,7 @@ fn main() {
     let output = args.get(2);
 
     let options = ConvertOptions {
-        image_handling: ImageHandling::Skip,
+        image_handling: ImageHandling::Inline,
         ..Default::default()
     };
 
