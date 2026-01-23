@@ -49,6 +49,7 @@ jobs:
 
       - name: Extract version from tag
         if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
           echo "VERSION=$VERSION" >> $GITHUB_ENV
@@ -56,12 +57,14 @@ jobs:
           
       - name: Update version in Cargo.toml
         if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
         run: |
           sed -i.bak "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
           cat Cargo.toml | head -5
           
       - name: Update version in pyproject.toml
         if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
         run: |
           sed -i.bak "s/^version = \".*\"/version = \"$VERSION\"/" pyproject.toml
           cat pyproject.toml | head -10
@@ -113,8 +116,6 @@ jobs:
           name: sdist
           path: dist
 
-  # NOTE: crates.io publish disabled - path dependency (docx-rust) not supported
-  # To enable: publish docx-rust to crates.io first, then update dependency
   publish_crate:
     name: Publish to crates.io
     runs-on: ubuntu-latest
