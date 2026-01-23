@@ -337,7 +337,9 @@ dependencies = [
 
 [[package]]
 name = "dm2xcod"
-version = "0.1.0"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "945d5378128eb9cdf252b49cebb06ded3305d9332b669daf518c74a158707136"
 dependencies = [
  "base64",
  "clap",
@@ -597,9 +599,9 @@ dependencies = [
 
 [[package]]
 name = "quote"
-version = "1.0.43"
+version = "1.0.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc74d9a594b72ae6656596548f56f667211f8a97b3d4c3d467150794690dc40a"
+checksum = "21b2ebcf727b7760c461f091f9f0f539b77b8e87f2fd88131e7f1b433b3cece4"
 dependencies = [
  "proc-macro2",
 ]
@@ -641,9 +643,9 @@ checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
 
 [[package]]
 name = "rs-docx"
-version = "0.1.0"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f38d4834c457b84db6b65a9509082305a408a3d71641a34906303ca6a4dc16fe"
+checksum = "d3053da37236de537d7e38ee18bce3d354ad4977f3bbbfe8f35d52236f4b385d"
 dependencies = [
  "derive_more",
  "hard-xml",
