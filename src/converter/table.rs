@@ -227,6 +227,10 @@ impl TableConverter {
                         content.push_str(&para_content);
                     }
                 }
+                TableCellContent::Table(table) => {
+                    let table_content = TableConverter::convert(table, context)?;
+                    content.push_str(&table_content);
+                }
             }
         }
         Ok(content)

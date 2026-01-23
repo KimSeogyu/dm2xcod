@@ -390,7 +390,7 @@ dependencies = [
 
 [[package]]
 name = "dm2xcod"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "base64",
  "clap",
@@ -904,7 +904,9 @@ checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
 
 [[package]]
 name = "rs-docx"
-version = "0.1.6"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f3e091c21987fce583ef9af98f768d372905689b4b0ec9d58db0a03930eb049f"
 dependencies = [
  "async_zip",
  "derive_more",
