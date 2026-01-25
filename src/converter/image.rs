@@ -6,13 +6,13 @@ use base64::Engine;
 use rs_docx::document::Drawing;
 use std::collections::HashMap;
 use std::fs::{self, File};
-use std::io::Read;
+use std::io::{Cursor, Read, Seek};
 use std::path::{Path, PathBuf};
 
 /// Extractor for images embedded in DOCX.
 pub struct ImageExtractor {
     mode: ImageMode,
-    docx_path: Option<PathBuf>,
+    source: ImageSource,
     counter: usize,
 }
 
@@ -22,24 +22,51 @@ enum ImageMode {
     Skip,
 }
 
+enum ImageSource {
+    Path(PathBuf),
+    Bytes(Vec<u8>),
+    None,
+}
+
 impl ImageExtractor {
-    /// Creates an extractor that saves images to a directory.
+    /// Creates an extractor that saves images to a directory (from file).
     pub fn new_with_dir<P: AsRef<Path>>(docx_path: P, output_dir: PathBuf) -> Result<Self> {
         // Ensure output directory exists
         fs::create_dir_all(&output_dir)?;
 
         Ok(Self {
             mode: ImageMode::SaveToDir(output_dir),
-            docx_path: Some(docx_path.as_ref().to_path_buf()),
+            source: ImageSource::Path(docx_path.as_ref().to_path_buf()),
             counter: 0,
         })
     }
 
-    /// Creates an extractor that embeds images as base64.
+    /// Creates an extractor that saves images to a directory (from bytes).
+    pub fn new_with_dir_from_bytes(bytes: &[u8], output_dir: PathBuf) -> Result<Self> {
+        // Ensure output directory exists
+        fs::create_dir_all(&output_dir)?;
+
+        Ok(Self {
+            mode: ImageMode::SaveToDir(output_dir),
+            source: ImageSource::Bytes(bytes.to_vec()),
+            counter: 0,
+        })
+    }
+
+    /// Creates an extractor that embeds images as base64 (from file).
     pub fn new_inline<P: AsRef<Path>>(docx_path: P) -> Result<Self> {
         Ok(Self {
             mode: ImageMode::Inline,
-            docx_path: Some(docx_path.as_ref().to_path_buf()),
+            source: ImageSource::Path(docx_path.as_ref().to_path_buf()),
+            counter: 0,
+        })
+    }
+
+    /// Creates an extractor that embeds images as base64 (from bytes).
+    pub fn new_inline_from_bytes(bytes: &[u8]) -> Result<Self> {
+        Ok(Self {
+            mode: ImageMode::Inline,
+            source: ImageSource::Bytes(bytes.to_vec()),
             counter: 0,
         })
     }
@@ -48,7 +75,7 @@ impl ImageExtractor {
     pub fn new_skip() -> Self {
         Self {
             mode: ImageMode::Skip,
-            docx_path: None,
+            source: ImageSource::None,
             counter: 0,
         }
     }
@@ -156,12 +183,8 @@ impl ImageExtractor {
     }
 
     fn process_image(&mut self, image_path: &str) -> Result<Option<String>> {
-        let Some(docx_path) = &self.docx_path else {
-            return Ok(None);
-        };
-
         // Read image from DOCX archive
-        let image_data = self.read_image_from_docx(docx_path, image_path)?;
+        let image_data = self.read_image_from_docx(image_path)?;
 
         self.counter += 1;
 
@@ -201,9 +224,22 @@ impl ImageExtractor {
         }
     }
 
-    fn read_image_from_docx(&self, docx_path: &Path, image_path: &str) -> Result<Vec<u8>> {
-        let file = File::open(docx_path)?;
-        let mut archive = zip::ZipArchive::new(file)
+    fn read_image_from_docx(&self, image_path: &str) -> Result<Vec<u8>> {
+        match &self.source {
+            ImageSource::Path(path) => {
+                let file = File::open(path)?;
+                self.extract_from_zip(file, image_path)
+            }
+            ImageSource::Bytes(bytes) => {
+                let cursor = Cursor::new(bytes);
+                self.extract_from_zip(cursor, image_path)
+            }
+            ImageSource::None => Ok(Vec::new()),
+        }
+    }
+
+    fn extract_from_zip<R: Read + Seek>(&self, reader: R, image_path: &str) -> Result<Vec<u8>> {
+        let mut archive = zip::ZipArchive::new(reader)
             .map_err(|e| Error::DocxParse(format!("Failed to open DOCX as ZIP: {}", e)))?;
 
         // Image path is relative to word/ directory typically

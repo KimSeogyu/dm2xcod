@@ -47,6 +47,13 @@ impl DocxToMarkdown {
     ///
     /// # Returns
     /// The converted Markdown content as a String.
+    /// Converts a DOCX file to Markdown.
+    ///
+    /// # Arguments
+    /// * `path` - Path to the DOCX file
+    ///
+    /// # Returns
+    /// The converted Markdown content as a String.
     pub fn convert<P: AsRef<Path>>(&self, path: P) -> Result<String> {
         let path = path.as_ref();
 
@@ -57,6 +64,48 @@ impl DocxToMarkdown {
             .parse()
             .map_err(|e| Error::DocxParse(format!("{:?}", e)))?;
 
+        // Initialize image extractor based on options
+        let mut image_extractor = match &self.options.image_handling {
+            ImageHandling::SaveToDir(dir) => ImageExtractor::new_with_dir(path, dir.clone())?,
+            ImageHandling::Inline => ImageExtractor::new_inline(path)?,
+            ImageHandling::Skip => ImageExtractor::new_skip(),
+        };
+
+        self.convert_inner(&docx, &mut image_extractor)
+    }
+
+    /// Converts a DOCX file from bytes to Markdown.
+    ///
+    /// # Arguments
+    /// * `bytes` - The DOCX file content as bytes
+    ///
+    /// # Returns
+    /// The converted Markdown content as a String.
+    pub fn convert_from_bytes(&self, bytes: &[u8]) -> Result<String> {
+        let reader = std::io::Cursor::new(bytes);
+        let docx_file =
+            DocxFile::from_reader(reader).map_err(|e| Error::DocxParse(format!("{:?}", e)))?;
+        let docx = docx_file
+            .parse()
+            .map_err(|e| Error::DocxParse(format!("{:?}", e)))?;
+
+        // Initialize image extractor based on options
+        let mut image_extractor = match &self.options.image_handling {
+            ImageHandling::SaveToDir(dir) => {
+                ImageExtractor::new_with_dir_from_bytes(bytes, dir.clone())?
+            }
+            ImageHandling::Inline => ImageExtractor::new_inline_from_bytes(bytes)?,
+            ImageHandling::Skip => ImageExtractor::new_skip(),
+        };
+
+        self.convert_inner(&docx, &mut image_extractor)
+    }
+
+    fn convert_inner<'a>(
+        &'a self,
+        docx: &'a rs_docx::Docx,
+        image_extractor: &'a mut ImageExtractor,
+    ) -> Result<String> {
         // Build relationship map for hyperlinks
         let rels = self.build_relationship_map(&docx);
 
@@ -65,13 +114,6 @@ impl DocxToMarkdown {
 
         // Initialize style resolver
         let style_resolver = StyleResolver::new(&docx.styles);
-
-        // Initialize image extractor based on options
-        let mut image_extractor = match &self.options.image_handling {
-            ImageHandling::SaveToDir(dir) => ImageExtractor::new_with_dir(path, dir.clone())?,
-            ImageHandling::Inline => ImageExtractor::new_inline(path)?,
-            ImageHandling::Skip => ImageExtractor::new_skip(),
-        };
 
         // Select localization strategy (currently hardcoded to Korean as per plan for default)
         // TODO: Make this configurable via options
@@ -82,7 +124,7 @@ impl DocxToMarkdown {
         let mut context = ConversionContext {
             rels: &rels,
             numbering: &mut numbering_resolver,
-            image_extractor: &mut image_extractor,
+            image_extractor,
             options: &self.options,
             footnotes: Vec::new(),
             endnotes: Vec::new(),

@@ -22,7 +22,12 @@ def main():
     output_file = sys.argv[2] if len(sys.argv) > 2 else None
 
     try:
-        markdown = dm2xcod.convert_docx(input_file)
+        # Request: "open with open and pass only data"
+        print(f"Reading '{input_file}' as bytes...")
+        with open(input_file, "rb") as f:
+            data = f.read()
+
+        markdown = dm2xcod.convert_docx(data)
 
         if output_file:
             with open(output_file, "w", encoding="utf-8") as f:

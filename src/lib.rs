@@ -67,15 +67,29 @@ pub enum ImageHandling {
 mod python_bindings {
     use super::*;
     use pyo3::prelude::*;
+    use pyo3::types::PyBytes;
 
     /// Converts a DOCX file to Markdown.
+    ///
+    /// Argument can be a file path (str) or file content (bytes).
     #[pyfunction]
-    fn convert_docx(path: String) -> PyResult<String> {
+    fn convert_docx(input: &Bound<'_, PyAny>) -> PyResult<String> {
         let options = ConvertOptions::default();
         let converter = DocxToMarkdown::new(options);
-        converter
-            .convert(&path)
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))
+
+        if let Ok(path) = input.extract::<String>() {
+            converter
+                .convert(&path)
+                .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))
+        } else if let Ok(bytes) = input.downcast::<PyBytes>() {
+            converter
+                .convert_from_bytes(bytes.as_bytes())
+                .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))
+        } else {
+            Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+                "Expected string path or bytes",
+            ))
+        }
     }
 
     /// A Python module implemented in Rust.
