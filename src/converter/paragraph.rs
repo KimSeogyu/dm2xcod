@@ -80,8 +80,8 @@ impl ParagraphConverter {
 
                     let text = Self::extract_text(run, context);
                     if !text.is_empty() {
-                        let seg = Self::run_to_segment(run, &text, context, para_style_id);
-                        segments.push(seg);
+                        let segs = Self::run_to_segment(run, &text, context, para_style_id);
+                        segments.extend(segs);
                     }
                 }
                 ParagraphContent::Link(hyperlink) => {
@@ -110,9 +110,11 @@ impl ParagraphConverter {
                     for run in &ins.runs {
                         let text = Self::extract_text(run, context);
                         if !text.is_empty() {
-                            let mut seg = Self::run_to_segment(run, &text, context, para_style_id);
-                            seg.is_insertion = true;
-                            segments.push(seg);
+                            let mut segs = Self::run_to_segment(run, &text, context, para_style_id);
+                            for seg in &mut segs {
+                                seg.is_insertion = true;
+                            }
+                            segments.extend(segs);
                         }
                     }
                 }
@@ -269,13 +271,13 @@ impl ParagraphConverter {
         text
     }
 
-    /// Creates a formatted segment from a run.
+    /// Creates formatted segments from a run, splitting on page breaks.
     fn run_to_segment(
         run: &rs_docx::document::Run,
         text: &str,
         context: &mut ConversionContext,
         para_style_id: Option<&str>,
-    ) -> FormattedSegment {
+    ) -> Vec<FormattedSegment> {
         // Resolve run style ID
         let mut run_style_id = None;
         if let Some(props) = &run.property {
@@ -308,15 +310,37 @@ impl ParagraphConverter {
             .map(|s| s.value.unwrap_or(true))
             .unwrap_or(false);
 
-        FormattedSegment {
-            text: text.to_string(),
-            is_bold,
-            is_italic,
-            has_underline,
-            has_strike,
-            is_insertion: false,
-            is_deletion: false,
+        let delimiter = "\n\n---\n\n";
+        let parts: Vec<&str> = text.split(delimiter).collect();
+        let mut segments = Vec::new();
+
+        for (i, part) in parts.iter().enumerate() {
+            if i > 0 {
+                // Add the break segment with no formatting
+                segments.push(FormattedSegment {
+                    text: delimiter.to_string(),
+                    is_bold: false,
+                    is_italic: false,
+                    has_underline: false,
+                    has_strike: false,
+                    is_insertion: false,
+                    is_deletion: false,
+                });
+            }
+            if !part.is_empty() {
+                segments.push(FormattedSegment {
+                    text: part.to_string(),
+                    is_bold,
+                    is_italic,
+                    has_underline,
+                    has_strike,
+                    is_insertion: false,
+                    is_deletion: false,
+                });
+            }
         }
+
+        segments
     }
 
     /// Merges adjacent segments with identical formatting.
@@ -375,9 +399,9 @@ impl ParagraphConverter {
             }
 
             if seg.is_bold && seg.is_italic {
-                text = format!("***{}***", text);
+                text = format!("<strong>*{}*</strong>", text);
             } else if seg.is_bold {
-                text = format!("**{}**", text);
+                text = format!("<strong>{}</strong>", text);
             } else if seg.is_italic {
                 text = format!("*{}*", text);
             }

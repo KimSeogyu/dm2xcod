@@ -34,3 +34,6 @@ dist/
 /tests/output/
 deps/
 
+debug_*.md
+debug_*.md
+verify_samples*

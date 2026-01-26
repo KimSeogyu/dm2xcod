@@ -164,9 +164,9 @@ impl RunConverter {
         }
 
         if is_bold && is_italic {
-            result = format!("***{}***", result);
+            result = format!("<strong>*{}*</strong>", result);
         } else if is_bold {
-            result = format!("**{}**", result);
+            result = format!("<strong>{}</strong>", result);
         } else if is_italic {
             result = format!("*{}*", result);
         }
