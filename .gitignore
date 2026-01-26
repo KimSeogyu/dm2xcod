@@ -37,3 +37,4 @@ deps/
 debug_*.md
 debug_*.md
 verify_samples*
+.DS_Store

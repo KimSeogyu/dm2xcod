@@ -1,6 +1,6 @@
 [package]
 name = "dm2xcod"
-version = "0.2.3"
+version = "0.2.4"
 edition = "2021"
 rust-version = "1.75"
 description = "DOCX to Markdown converter written in Rust"
@@ -14,6 +14,15 @@ categories = [
     "command-line-utilities",
     "text-processing",
     "parser-implementations",
+]
+include = [
+    "src/**/*",
+    "tests/**/*",
+    "examples/python_example/*.py",
+    "examples/python_example/*.toml",
+    "examples/python_example/*.lock",
+    "README.md",
+    "pyproject.toml",
 ]
 default-run = "dm2xcod"
 
