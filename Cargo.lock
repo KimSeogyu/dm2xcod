@@ -858,6 +858,7 @@ checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
 [[package]]
 name = "rs-docx"
 version = "0.1.9"
+source = "git+https://github.com/KimSeogyu/rs-docx#d1ee5ad5a7053e5cd00939f0ed1053fd92d3bf0b"
 dependencies = [
  "async_zip",
  "derive_more",

@@ -32,7 +32,9 @@ default = []
 python = ["pyo3"]
 
 [dependencies]
-rs-docx = { version = "0.1.9", path = "./deps/rs-docx", features = ["async"] }
+rs-docx = { git = "https://github.com/KimSeogyu/rs-docx", version = "0.1.9", features = [
+    "async",
+] }
 base64 = "0.22"
 thiserror = "2.0"
 zip = "2.2"
