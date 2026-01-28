@@ -301,7 +301,7 @@ mod tests {
         let result = DocxToMarkdown::convert_content(&BodyContent::Sdt(sdt), &mut context).unwrap();
 
         // Verify
-        assert!(result.contains("<a name=\"TestAnchor\"></a>"));
+        assert!(result.contains("<a id=\"TestAnchor\"></a>"));
         assert!(result.contains("Content"));
     }
 }
