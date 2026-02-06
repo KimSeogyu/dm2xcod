@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "dm2xcod"
-version = "0.3.7"
+version = "0.3.8"
 description = "DOCX to Markdown converter written in Rust"
 readme = "README.md"
 license = { text = "MIT" }
@@ -17,6 +17,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: Implementation :: CPython",
     "Topic :: Text Processing :: Markup",
     "Topic :: File Formats",
