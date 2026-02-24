@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "dm2xcod"
-version = "0.3.12"
+version = "0.3.13"
 description = "DOCX to Markdown converter written in Rust"
 readme = "README.md"
 license = { text = "MIT" }
