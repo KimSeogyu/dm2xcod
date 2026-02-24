@@ -1,6 +1,6 @@
 [package]
 name = "dm2xcod"
-version = "0.3.13"
+version = "0.3.14"
 edition = "2021"
 rust-version = "1.75"
 description = "DOCX to Markdown converter written in Rust"
