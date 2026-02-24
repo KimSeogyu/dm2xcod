@@ -3,56 +3,64 @@
 [![PyPI](https://img.shields.io/pypi/v/dm2xcod.svg)](https://pypi.org/project/dm2xcod/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-A high-performance DOCX to Markdown converter written in Rust, with Python bindings.
+DOCX to Markdown converter in Rust with Python bindings.
 
-## Features
+## Table of Contents
 
-- **Fast & Efficient**: Written in Rust for maximum performance.
-- **Rich Formatting**: Preserves bold, italic, underline, strikethrough, and more.
-  - Uses HTML tags (`<strong>`, `<em>`) for better cross-parser compatibility.
-- **Structure Preservation**: Handles heading hierarchy, lists (ordered/unordered), and tables.
-- **Image Support**: Extracts and embeds images.
-- **Cross-Platform**: Pre-built wheels for macOS (Intel/Apple Silicon), Windows, and Linux.
-- **Simple API**: Native Python bindings provided via PyO3.
+- [Why dm2xcod](#why-dm2xcod)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [API Reference](#api-reference)
+- [CLI Reference](#cli-reference)
+- [Architecture Overview](#architecture-overview)
+- [Development](#development)
+- [License](#license)
+
+## Why dm2xcod
+
+- Rust-based converter focused on predictable performance.
+- Covers common DOCX structures: headings, lists, tables, notes, links, images.
+- Supports image handling strategies: inline base64, save to directory, or skip.
+- Exposes both CLI and Python (`PyO3`) entry points.
+- Includes strict reference validation for footnote/comment/endnote integrity.
 
 ## Requirements
 
-- **Rust**: 1.75+ (for building from source)
-- **Python**: 3.12+ (Universal ABI3 support - works with 3.12, 3.13, 3.14+, etc.)
+- Rust `1.75+` (building from source)
+- Python `3.12+` (ABI3 wheel compatibility)
 
 ## Installation
 
-### Python
-
-Install via pip:
+### Python package
 
 ```bash
 pip install dm2xcod
 ```
 
-### CLI
-
-Install via cargo:
+### CLI (cargo)
 
 ```bash
 cargo install dm2xcod
 ```
 
-### Rust Library
-
-Add to your `Cargo.toml`:
+### Rust library
 
 ```toml
 [dependencies]
 dm2xcod = "0.3"
 ```
 
-## Usage
+## Quick Start
 
 ### CLI
 
 ```bash
+# write to file
 dm2xcod input.docx output.md
+
+# print markdown to stdout
+dm2xcod input.docx
 ```
 
 ### Python
@@ -60,18 +68,19 @@ dm2xcod input.docx output.md
 ```python
 import dm2xcod
 
-# Basic conversion
+# path input
 markdown = dm2xcod.convert_docx("document.docx")
 print(markdown)
 
-# With options (if applicable in future versions)
-# markdown = dm2xcod.convert_docx("document.docx", image_dir="images")
+# bytes input
+with open("document.docx", "rb") as f:
+    markdown = dm2xcod.convert_docx(f.read())
 ```
 
 ### Rust
 
 ```rust
-use dm2xcod::{DocxToMarkdown, ConvertOptions};
+use dm2xcod::{ConvertOptions, DocxToMarkdown};
 
 fn main() -> anyhow::Result<()> {
     let converter = DocxToMarkdown::new(ConvertOptions::default());
@@ -81,9 +90,48 @@ fn main() -> anyhow::Result<()> {
 }
 ```
 
-### Rust (Advanced: Custom Extractor/Renderer Injection)
+## API Reference
 
-`DocxToMarkdown::with_components(...)` lets you replace the default DOCX extractor and Markdown renderer.
+### `ConvertOptions`
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `image_handling` | `ImageHandling` | `Inline` | Image output strategy |
+| `preserve_whitespace` | `bool` | `false` | Preserve original spacing more strictly |
+| `html_underline` | `bool` | `true` | Use HTML tags for underline output |
+| `html_strikethrough` | `bool` | `false` | Use HTML tags for strikethrough output |
+| `strict_reference_validation` | `bool` | `false` | Fail on unresolved note/comment references |
+
+`ImageHandling` variants:
+
+- `ImageHandling::Inline`
+- `ImageHandling::SaveToDir(PathBuf)`
+- `ImageHandling::Skip`
+
+Example with non-default options:
+
+```rust
+use dm2xcod::{ConvertOptions, DocxToMarkdown, ImageHandling};
+
+fn main() -> Result<(), dm2xcod::Error> {
+    let options = ConvertOptions {
+        image_handling: ImageHandling::SaveToDir("./images".into()),
+        preserve_whitespace: true,
+        html_underline: true,
+        html_strikethrough: true,
+        strict_reference_validation: true,
+    };
+
+    let converter = DocxToMarkdown::new(options);
+    let markdown = converter.convert("document.docx")?;
+    println!("{}", markdown);
+    Ok(())
+}
+```
+
+### Advanced: Custom extractor/renderer injection
+
+`DocxToMarkdown::with_components(options, extractor, renderer)` lets you replace the default pipeline.
 
 ```rust
 use dm2xcod::adapters::docx::AstExtractor;
@@ -130,60 +178,105 @@ fn main() -> Result<()> {
 }
 ```
 
+### Python API
+
+- `dm2xcod.convert_docx(input: str | bytes) -> str`
+- Current Python entry point uses default conversion options.
+
+## CLI Reference
+
+```text
+dm2xcod <INPUT> [OUTPUT] [--images-dir <DIR>] [--skip-images]
+```
+
+| Argument/Option | Description |
+|---|---|
+| `<INPUT>` | Input DOCX path (required) |
+| `[OUTPUT]` | Output Markdown path (optional, otherwise stdout) |
+| `--images-dir <DIR>` | Save extracted images to a directory |
+| `--skip-images` | Skip image extraction/output |
+
+## Architecture Overview
+
+Conversion pipeline:
+
+1. Parse DOCX (`rs_docx`)
+2. Build conversion context (relationships, numbering, styles, references, image strategy)
+3. Extract AST via adapter (`AstExtractor`)
+4. Validate references (optional strict mode)
+5. Render final markdown via renderer (`Renderer`)
+
+Project layout:
+
+```text
+src/
+  adapters/      # Input adapters (DOCX -> AST extraction boundary)
+  core/          # Shared AST/model types
+  converter/     # Orchestration and conversion context
+  render/        # Markdown rendering + escaping
+  lib.rs         # Public API (Rust + Python bindings)
+  main.rs        # CLI entrypoint
+```
+
 ## Development
 
-### Build from Source
+### Build from source
 
 ```bash
-# Build Rust library/CLI
+# Rust library/CLI
 cargo build --release
 
-# Development with Python
+# Python extension in local env
 pip install maturin
 maturin develop --features python
 ```
 
-### Performance Benchmark
+### Test and lint
 
 ```bash
-# Uses tests/aaa, 3 iterations, up to 5 DOCX files by default
+cargo test --all-features
+cargo clippy --all-features --tests -- -D warnings
+```
+
+### Performance benchmark
+
+```bash
+# default: tests/aaa, 3 iterations, max 5 files
 ./scripts/run_perf_benchmark.sh
 
-# Custom input_dir / iterations / max_files
+# custom: input_dir iterations max_files
 ./scripts/run_perf_benchmark.sh ./samples 5 10
 ```
 
-#### Latest Benchmark Record (2026-02-14)
+Latest benchmark record (`2026-02-14`):
 
 - Command: `./scripts/run_perf_benchmark.sh ./tests/aaa 10 10`
 - Threshold gate: `./scripts/check_perf_threshold.sh ./output_tests/perf/latest.json 15.0` (`pass`)
-- Environment:
-  - OS: `macOS 26.2 (Darwin arm64)`
-  - Rust: `rustc 1.92.0 (ded5c06cf 2025-12-08)`
-- Result (`output_tests/perf/latest.json`):
+- Environment: `macOS 26.2 (Darwin arm64)`, `rustc 1.92.0 (ded5c06cf 2025-12-08)`
+- Result file: `output_tests/perf/latest.json`
 
 ```json
 {"input_dir":"./tests/aaa","iterations":10,"files":2,"samples":20,"avg_ms":1.651,"min_ms":0.434,"max_ms":6.081,"total_ms":33.029,"overall_ms":33.034}
 ```
 
-### Performance Threshold Gate
+### Performance threshold gate
 
 ```bash
-# Fails if avg_ms exceeds threshold
+# fails if avg_ms exceeds threshold
 ./scripts/check_perf_threshold.sh ./output_tests/perf/latest.json 15.0
 ```
 
-### Release Notes
+### Release notes
 
 ```bash
-# Auto-detect previous tag to HEAD
+# auto-detect previous tag to HEAD
 ./scripts/generate_release_notes.sh
 
-# Explicit range and output file
+# explicit range and output file
 ./scripts/generate_release_notes.sh v0.3.9 v0.3.10 ./output_tests/release_notes.md
 ```
 
-### API Stability
+### API stability policy
 
 See `docs/API_POLICY.md`.
 
