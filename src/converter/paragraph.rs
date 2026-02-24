@@ -178,6 +178,9 @@ impl ParagraphConverter {
                         });
                     }
                 }
+                ParagraphContent::BookmarkEnd(_) => {}
+                ParagraphContent::CommentRangeStart(_) => {}
+                ParagraphContent::CommentRangeEnd(_) => {}
                 ParagraphContent::SDT(sdt) => {
                     // Structured document tags (TOC, etc.) - extract inner content
                     if let Some(sdt_content) = &sdt.content {
@@ -213,7 +216,6 @@ impl ParagraphConverter {
                         });
                     }
                 }
-                _ => {}
             }
         }
 
@@ -254,6 +256,30 @@ impl ParagraphConverter {
                 rs_docx::document::RunContent::CarriageReturn(_) => {
                     text.push('\n');
                 }
+                rs_docx::document::RunContent::NoBreakHyphen(_) => {
+                    text.push('\u{2011}');
+                }
+                rs_docx::document::RunContent::SoftHyphen(_) => {
+                    text.push('\u{00AD}');
+                }
+                rs_docx::document::RunContent::Sym(sym) => {
+                    if let Some(char_code) = &sym.char {
+                        if let Ok(code) = u32::from_str_radix(char_code, 16) {
+                            if let Some(c) = char::from_u32(code) {
+                                text.push(c);
+                            }
+                        }
+                    }
+                }
+                rs_docx::document::RunContent::PTab(_) => {
+                    text.push('\t');
+                }
+                rs_docx::document::RunContent::LastRenderedPageBreak(_) => {
+                    text.push_str("\n\n---\n\n");
+                }
+                rs_docx::document::RunContent::PgNum(_) => {
+                    text.push_str("{PAGE}");
+                }
                 rs_docx::document::RunContent::Drawing(drawing) => {
                     if let Ok(Some(img_md)) = context.extract_image_from_drawing(drawing) {
                         text.push_str(&img_md);
@@ -292,6 +318,11 @@ impl ParagraphConverter {
                         }
                     }
                 }
+                rs_docx::document::RunContent::AnnotationRef(_)
+                | rs_docx::document::RunContent::FootnoteRef(_)
+                | rs_docx::document::RunContent::EndnoteRef(_)
+                | rs_docx::document::RunContent::Separator(_)
+                | rs_docx::document::RunContent::ContinuationSeparator(_) => {}
                 _ => {}
             }
         }
@@ -1124,5 +1155,49 @@ mod tests {
 
         let md = ParagraphConverter::convert(&para, &mut context).expect("Conversion failed");
         assert_eq!(md, "prefix Visible suffix");
+    }
+
+    #[test]
+    fn test_extended_run_content_is_preserved() {
+        use hard_xml::XmlRead;
+
+        let mut para = Paragraph::default();
+        let run = Run::from_str(
+            r#"<w:r>
+                <w:t>A</w:t>
+                <w:noBreakHyphen/>
+                <w:t>B</w:t>
+                <w:softHyphen/>
+                <w:t>C</w:t>
+                <w:sym w:char="2013"/>
+                <w:ptab/>
+                <w:lastRenderedPageBreak/>
+                <w:pgNum/>
+                <w:t>D</w:t>
+            </w:r>"#,
+        )
+        .expect("Failed to parse run XML");
+        para.content.push(ParagraphContent::Run(run));
+
+        let docx = rs_docx::Docx::default();
+        let rels = HashMap::new();
+        let mut numbering_resolver = super::super::NumberingResolver::new(&docx);
+        let mut image_extractor = super::super::ImageExtractor::new_skip();
+        let options = crate::ConvertOptions::default();
+        let style_resolver = super::super::StyleResolver::new(&docx.styles);
+
+        let mut context = super::ConversionContext::new(
+            &rels,
+            &mut numbering_resolver,
+            &mut image_extractor,
+            &options,
+            None,
+            None,
+            None,
+            &style_resolver,
+        );
+
+        let md = ParagraphConverter::convert(&para, &mut context).expect("Conversion failed");
+        assert_eq!(md, "A\u{2011}B\u{00AD}C\u{2013}\t\n\n---\n\n{PAGE}D");
     }
 }

@@ -1,5 +1,5 @@
 use crate::Result;
-use rs_docx::document::{Table, TableCell};
+use rs_docx::document::{BodyContent, Table, TableCell};
 
 #[derive(Clone, Debug)]
 pub(crate) enum CellStatus {
@@ -29,66 +29,90 @@ where
 
         let mut col_idx = 0;
         for cell_content in &row.cells {
-            while col_idx < grid[row_idx].len()
-                && !matches!(grid[row_idx][col_idx], CellStatus::Empty)
-            {
-                col_idx += 1;
-            }
-
-            if grid[row_idx].len() <= col_idx {
-                grid[row_idx].resize(col_idx + 1, CellStatus::Empty);
-            }
-
             match cell_content {
                 rs_docx::document::TableRowContent::TableCell(cell) => {
-                    let grid_span = cell
-                        .property
-                        .grid_span
-                        .as_ref()
-                        .map(|g| g.val as usize)
-                        .unwrap_or(1);
-                    let v_merge_val = cell.property.v_merge.as_ref().and_then(|v| v.val.as_ref());
-
-                    let is_v_merge_restart =
-                        matches!(v_merge_val, Some(rs_docx::formatting::VMergeType::Restart));
-                    let is_v_merge_continue =
-                        cell.property.v_merge.is_some() && !is_v_merge_restart;
-
-                    let content = if is_v_merge_continue {
-                        String::new()
-                    } else {
-                        convert_cell(cell)?
-                    };
-
-                    if is_v_merge_continue {
-                        increment_rowspan(&mut grid, row_idx, col_idx);
-                        for i in 0..grid_span {
-                            set_grid_cell(&mut grid, row_idx, col_idx + i, CellStatus::MergedUp);
-                        }
-                    } else {
-                        set_grid_cell(
-                            &mut grid,
-                            row_idx,
-                            col_idx,
-                            CellStatus::Occupied {
-                                content,
-                                rowspan: 1,
-                                colspan: grid_span,
-                            },
-                        );
-                        for i in 1..grid_span {
-                            set_grid_cell(&mut grid, row_idx, col_idx + i, CellStatus::MergedLeft);
+                    place_cell(&mut grid, row_idx, &mut col_idx, cell, &mut convert_cell)?;
+                }
+                rs_docx::document::TableRowContent::SDT(sdt) => {
+                    if let Some(sdt_content) = &sdt.content {
+                        for child in &sdt_content.content {
+                            if let BodyContent::TableCell(cell) = child {
+                                place_cell(
+                                    &mut grid,
+                                    row_idx,
+                                    &mut col_idx,
+                                    cell,
+                                    &mut convert_cell,
+                                )?;
+                            }
                         }
                     }
-
-                    col_idx += grid_span;
                 }
-                rs_docx::document::TableRowContent::SDT(_) => {}
             }
         }
     }
 
     Ok(grid)
+}
+
+fn place_cell<'a, F>(
+    grid: &mut Vec<Vec<CellStatus>>,
+    row_idx: usize,
+    col_idx: &mut usize,
+    cell: &TableCell<'a>,
+    convert_cell: &mut F,
+) -> Result<()>
+where
+    F: FnMut(&TableCell<'a>) -> Result<String>,
+{
+    while *col_idx < grid[row_idx].len() && !matches!(grid[row_idx][*col_idx], CellStatus::Empty) {
+        *col_idx += 1;
+    }
+
+    if grid[row_idx].len() <= *col_idx {
+        grid[row_idx].resize(*col_idx + 1, CellStatus::Empty);
+    }
+
+    let grid_span = cell
+        .property
+        .grid_span
+        .as_ref()
+        .map(|g| g.val as usize)
+        .unwrap_or(1);
+    let v_merge_val = cell.property.v_merge.as_ref().and_then(|v| v.val.as_ref());
+
+    let is_v_merge_restart = matches!(v_merge_val, Some(rs_docx::formatting::VMergeType::Restart));
+    let is_v_merge_continue = cell.property.v_merge.is_some() && !is_v_merge_restart;
+
+    let content = if is_v_merge_continue {
+        String::new()
+    } else {
+        convert_cell(cell)?
+    };
+
+    if is_v_merge_continue {
+        increment_rowspan(grid, row_idx, *col_idx);
+        for i in 0..grid_span {
+            set_grid_cell(grid, row_idx, *col_idx + i, CellStatus::MergedUp);
+        }
+    } else {
+        set_grid_cell(
+            grid,
+            row_idx,
+            *col_idx,
+            CellStatus::Occupied {
+                content,
+                rowspan: 1,
+                colspan: grid_span,
+            },
+        );
+        for i in 1..grid_span {
+            set_grid_cell(grid, row_idx, *col_idx + i, CellStatus::MergedLeft);
+        }
+    }
+
+    *col_idx += grid_span;
+    Ok(())
 }
 
 pub(crate) fn render_grid(grid: Vec<Vec<CellStatus>>) -> String {

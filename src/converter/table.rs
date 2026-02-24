@@ -45,7 +45,7 @@ impl TableConverter {
 mod tests {
     use super::*;
     use crate::ConvertOptions;
-    use rs_docx::document::{Paragraph, Table, TableCell, TableRow};
+    use rs_docx::document::{BodyContent, Paragraph, SDTContent, Table, TableCell, TableRow};
     use rs_docx::formatting::{GridSpan, TableCellProperty, VMerge, VMergeType};
     use std::collections::HashMap;
 
@@ -89,5 +89,41 @@ mod tests {
         let html = TableConverter::convert(&table, &mut context).expect("table conversion failed");
         assert!(html.contains("<td rowspan=\"2\" colspan=\"2\">TOP</td>"));
         assert!(html.contains("<td>L</td>"));
+    }
+
+    #[test]
+    fn test_table_row_sdt_with_table_cell_is_rendered() {
+        let mut sdt_content = SDTContent::default();
+        sdt_content
+            .content
+            .push(BodyContent::TableCell(TableCell::paragraph(
+                Paragraph::default().push_text("SDT-CELL"),
+            )));
+        let sdt = rs_docx::document::SDT::default().content(sdt_content);
+
+        let mut row = TableRow::default();
+        row.cells.push(rs_docx::document::TableRowContent::SDT(sdt));
+
+        let table = Table::default().push_row(row);
+
+        let docx = rs_docx::Docx::default();
+        let rels = HashMap::new();
+        let mut numbering_resolver = super::super::NumberingResolver::new(&docx);
+        let mut image_extractor = super::super::ImageExtractor::new_skip();
+        let options = ConvertOptions::default();
+        let style_resolver = super::super::StyleResolver::new(&docx.styles);
+        let mut context = super::super::ConversionContext::new(
+            &rels,
+            &mut numbering_resolver,
+            &mut image_extractor,
+            &options,
+            None,
+            None,
+            None,
+            &style_resolver,
+        );
+
+        let html = TableConverter::convert(&table, &mut context).expect("table conversion failed");
+        assert!(html.contains("<td>SDT-CELL</td>"));
     }
 }

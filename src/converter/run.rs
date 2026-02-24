@@ -33,6 +33,12 @@ impl RunConverter {
                 RunContent::CarriageReturn(_) => {
                     text.push('\n');
                 }
+                RunContent::NoBreakHyphen(_) => {
+                    text.push('\u{2011}');
+                }
+                RunContent::SoftHyphen(_) => {
+                    text.push('\u{00AD}');
+                }
                 RunContent::Drawing(drawing) => {
                     // Handle inline images (DrawingML)
                     if let Some(img_md) = context.extract_image_from_drawing(drawing)? {
@@ -79,6 +85,20 @@ impl RunConverter {
                         text.push_str(&marker);
                     }
                 }
+                RunContent::PTab(_) => {
+                    text.push('\t');
+                }
+                RunContent::LastRenderedPageBreak(_) => {
+                    text.push_str("\n\n---\n\n");
+                }
+                RunContent::PgNum(_) => {
+                    text.push_str("{PAGE}");
+                }
+                RunContent::AnnotationRef(_)
+                | RunContent::FootnoteRef(_)
+                | RunContent::EndnoteRef(_)
+                | RunContent::Separator(_)
+                | RunContent::ContinuationSeparator(_) => {}
                 _ => {}
             }
         }

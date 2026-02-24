@@ -200,6 +200,31 @@ where
                 output.push_str(&converted);
                 output.push_str("\n\n");
             }
+            BodyContent::Run(run) => {
+                let converted = RunConverter::convert(run, context, None)?;
+                if !converted.is_empty() {
+                    output.push_str(&converted);
+                    output.push_str("\n\n");
+                }
+            }
+            BodyContent::TableCell(cell) => {
+                for item in &cell.content {
+                    match item {
+                        rs_docx::document::TableCellContent::Paragraph(para) => {
+                            let converted = ParagraphConverter::convert(para, context)?;
+                            if !converted.is_empty() {
+                                output.push_str(&converted);
+                                output.push_str("\n\n");
+                            }
+                        }
+                        rs_docx::document::TableCellContent::Table(table) => {
+                            let converted = TableConverter::convert(table, context)?;
+                            output.push_str(&converted);
+                            output.push_str("\n\n");
+                        }
+                    }
+                }
+            }
             BodyContent::Sdt(sdt) => {
                 if let Some(sdt_content) = &sdt.content {
                     for child in &sdt_content.content {
@@ -235,8 +260,8 @@ mod tests {
     use super::*;
     use crate::core::ast::{BlockNode, DocumentAst};
     use rs_docx::document::{
-        BodyContent, BookmarkStart, EndNote, EndNotes, FootNote, FootNotes, Paragraph, SDTContent,
-        SDT,
+        BodyContent, BookmarkStart, EndNote, EndNotes, FootNote, FootNotes, Paragraph, Run,
+        RunContent, SDTContent, SDT, TableCell, Text,
     };
     use std::borrow::Cow;
     use std::collections::HashMap;
@@ -547,5 +572,69 @@ mod tests {
             Error::MissingReference(msg) => assert!(msg.contains("endnote:404")),
             other => panic!("unexpected error: {:?}", other),
         }
+    }
+
+    #[test]
+    fn test_convert_content_body_run_is_rendered() {
+        let mut run = Run::default();
+        run.content.push(RunContent::Text(Text {
+            text: "loose run".into(),
+            ..Default::default()
+        }));
+
+        let docx = rs_docx::Docx::default();
+        let rels = HashMap::new();
+        let mut numbering_resolver = NumberingResolver::new(&docx);
+        let mut image_extractor = ImageExtractor::new_skip();
+        let options = ConvertOptions::default();
+        let style_resolver = StyleResolver::new(&docx.styles);
+        let mut context = ConversionContext::new(
+            &rels,
+            &mut numbering_resolver,
+            &mut image_extractor,
+            &options,
+            None,
+            None,
+            None,
+            &style_resolver,
+        );
+
+        let output =
+            DocxToMarkdown::<DocxExtractor, MarkdownRenderer>::convert_content(
+                &BodyContent::Run(run),
+                &mut context,
+            )
+            .expect("conversion failed");
+        assert_eq!(output, "loose run\n\n");
+    }
+
+    #[test]
+    fn test_convert_content_body_table_cell_is_rendered() {
+        let cell = TableCell::paragraph(Paragraph::default().push_text("cell text"));
+
+        let docx = rs_docx::Docx::default();
+        let rels = HashMap::new();
+        let mut numbering_resolver = NumberingResolver::new(&docx);
+        let mut image_extractor = ImageExtractor::new_skip();
+        let options = ConvertOptions::default();
+        let style_resolver = StyleResolver::new(&docx.styles);
+        let mut context = ConversionContext::new(
+            &rels,
+            &mut numbering_resolver,
+            &mut image_extractor,
+            &options,
+            None,
+            None,
+            None,
+            &style_resolver,
+        );
+
+        let output =
+            DocxToMarkdown::<DocxExtractor, MarkdownRenderer>::convert_content(
+                &BodyContent::TableCell(cell),
+                &mut context,
+            )
+            .expect("conversion failed");
+        assert_eq!(output, "cell text\n\n");
     }
 }
