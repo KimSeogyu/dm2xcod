@@ -123,6 +123,7 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [test]
+    environment: production
     steps:
       - uses: actions/checkout@v4
       - name: Set up Rust
@@ -136,6 +137,7 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [build_wheels, sdist]
+    environment: production
     permissions:
       id-token: write
     steps:
