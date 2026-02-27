@@ -26,10 +26,25 @@ jobs:
       - name: Run tests
         run: cargo test --all-features
 
+  # Ensure release tags point to commits already merged into main.
+  release_guard:
+    name: Verify tag commit is on main
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify tag commit ancestry
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
   # Build Python wheels for multiple platforms (abi3 for all Python 3.12+)
   build_wheels:
     name: Build wheels (${{ matrix.os }})
-    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [test, release_guard]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -88,7 +103,8 @@ jobs:
   # Build source distribution
   sdist:
     name: Build source distribution
-    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [test, release_guard]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -122,7 +138,8 @@ jobs:
     name: Publish to crates.io
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [test]
+    needs: [test, release_guard]
+    environment: production
     steps:
       - uses: actions/checkout@v4
       - name: Set up Rust
@@ -136,6 +153,7 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [build_wheels, sdist]
+    environment: production
     permissions:
       id-token: write
     steps:
