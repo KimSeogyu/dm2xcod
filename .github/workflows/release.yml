@@ -29,6 +29,7 @@ jobs:
   # Build Python wheels for multiple platforms (abi3 for all Python 3.12+)
   build_wheels:
     name: Build wheels (${{ matrix.os }})
+    if: startsWith(github.ref, 'refs/tags/v')
     needs: test
     runs-on: ${{ matrix.os }}
     strategy:
@@ -88,6 +89,7 @@ jobs:
   # Build source distribution
   sdist:
     name: Build source distribution
+    if: startsWith(github.ref, 'refs/tags/v')
     needs: test
     runs-on: ubuntu-latest
     steps:
